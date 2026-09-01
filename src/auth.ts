@@ -20,15 +20,19 @@ function isPatAllowedHost(hostname: string): boolean {
  * Installs a global fetch interceptor that rewrites the Bearer auth header to Basic
  * for requests carrying the PAT.
  *
- * @param basicValue The base64 PAT credential.
+ * @param rawPat The raw (unencoded) Azure DevOps Personal Access Token.
  * @param configuredHost Hostname of the Azure DevOps connection the user explicitly configured
  * (e.g. via the CLI `organization` argument). Trusted in addition to the built-in cloud allow-list,
  * and — unlike the cloud hosts — allowed over plain `http:` too, since on-premises Azure DevOps
  * Server / TFS collections are frequently reached over an internal network without TLS.
  */
-function installPatFetchInterceptor(basicValue: string, configuredHost?: string): void {
+function installPatFetchInterceptor(rawPat: string, configuredHost?: string): void {
   const originalFetch = globalThis.fetch;
-  const patBearerValue = `Bearer ${basicValue}`;
+  const patBearerValue = `Bearer ${rawPat}`;
+  // HTTP Basic auth requires a username:password pair; Azure DevOps ignores the username for PAT
+  // auth, so "PAT" is just a placeholder — matching the literal value azure-devops-node-api's own
+  // PersonalAccessTokenCredentialHandler uses internally, for consistency with the requests it sends.
+  const basicAuthValue = Buffer.from(`PAT:${rawPat}`).toString("base64");
   const normalizedConfiguredHost = configuredHost?.toLowerCase();
 
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -44,7 +48,7 @@ function installPatFetchInterceptor(basicValue: string, configuredHost?: string)
       throw new Error(`Refusing to send a Personal Access Token to untrusted destination '${requestUrl.origin}'`);
     }
 
-    headers.set("Authorization", `Basic ${basicValue}`);
+    headers.set("Authorization", `Basic ${basicAuthValue}`);
     if (input instanceof Request) {
       return originalFetch(new Request(input, { ...init, headers }));
     }
@@ -160,14 +164,13 @@ function createAuthenticator(type: string, tenantId?: string): () => Promise<str
       logger.debug(`Authenticator: Using PAT authentication (PERSONAL_ACCESS_TOKEN)`);
       return async () => {
         logger.debug(`${type}: Reading token from PERSONAL_ACCESS_TOKEN environment variable`);
-        const b64Pat = process.env["PERSONAL_ACCESS_TOKEN"];
-        if (!b64Pat) {
+        const rawPat = process.env["PERSONAL_ACCESS_TOKEN"];
+        if (!rawPat) {
           logger.error(`${type}: PERSONAL_ACCESS_TOKEN environment variable is not set or empty`);
-          throw new Error("Environment variable 'PERSONAL_ACCESS_TOKEN' is not set or empty. Please set it with a valid base64-encoded Azure DevOps Personal Access Token.");
+          throw new Error("Environment variable 'PERSONAL_ACCESS_TOKEN' is not set or empty. Please set it to a valid Azure DevOps Personal Access Token.");
         }
-        // Return base64 value as-is — caller uses it directly as the Basic auth credential
         logger.debug(`${type}: Successfully retrieved PAT from environment variable`);
-        return b64Pat;
+        return rawPat;
       };
 
     case "envvar":

@@ -92,12 +92,10 @@ export ADO_MCP_AUTH_TOKEN="<bearer-token>"
 
 ### Personal Access Token
 
-Use `pat` to authenticate with an Azure DevOps [Personal Access Token](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate). `PERSONAL_ACCESS_TOKEN` must contain the base64 encoding of `<email>:<pat>`. The email can be any non-empty value.
-
-For example:
+Use `pat` to authenticate with an Azure DevOps [Personal Access Token](https://learn.microsoft.com/en-us/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate). Set `PERSONAL_ACCESS_TOKEN` to the raw token value exactly as Azure DevOps generated it — no encoding needed:
 
 ```bash
-export PERSONAL_ACCESS_TOKEN="$(printf '%s' '<email>:<pat>' | base64)"
+export PERSONAL_ACCESS_TOKEN="<your-pat>"
 ```
 
 Then add `"--authentication", "pat"` to the server arguments.
@@ -117,7 +115,7 @@ To connect to an on-premises Azure DevOps Server / TFS collection instead of Azu
       "command": "npx",
       "args": ["-y", "github:sonyjv/azure-devops-mcp", "http://tfsserver:8080/tfs/DefaultCollection", "--authentication", "pat"],
       "env": {
-        "PERSONAL_ACCESS_TOKEN": "<base64 email:pat, see Personal Access Token above>"
+        "PERSONAL_ACCESS_TOKEN": "<your-pat, see Personal Access Token above>"
       }
     }
   }
