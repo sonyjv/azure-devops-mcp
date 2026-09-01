@@ -3,10 +3,11 @@
 This guide explains how to run the local Azure DevOps MCP Server with supported MCP clients.
 
 > [!NOTE]
-> This is [sonyjv/azure-devops-mcp](https://github.com/sonyjv/azure-devops-mcp), a fork of the official [microsoft/azure-devops-mcp](https://github.com/microsoft/azure-devops-mcp) that adds support for connecting to an on-premises Azure DevOps Server / TFS collection (see [Azure DevOps Server (On-Premises)](#azure-devops-server-on-premises)). It is **not** published to npm, so every client below is configured to run the server you [build from source](#build-the-server) rather than via `npx`. If you're only targeting Azure DevOps Services (cloud) and don't need on-premises support, the hosted [Remote MCP Server](https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server) or the [upstream project](https://github.com/microsoft/azure-devops-mcp) may be a simpler fit.
+> This is [sonyjv/azure-devops-mcp](https://github.com/sonyjv/azure-devops-mcp), a fork of the official [microsoft/azure-devops-mcp](https://github.com/microsoft/azure-devops-mcp) that adds support for connecting to an on-premises Azure DevOps Server / TFS collection (see [Azure DevOps Server (On-Premises)](#azure-devops-server-on-premises)). It is **not** published to npm, so every client below uses `npx -y github:sonyjv/azure-devops-mcp` in place of `npx -y @azure-devops/mcp` — `npx` builds it from GitHub on first use and caches the result, so there's no separate clone/build step (see [Run from Source](#run-from-source) if you want to modify the code instead). If you're only targeting Azure DevOps Services (cloud) and don't need on-premises support, the hosted [Remote MCP Server](https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server) or the [upstream project](https://github.com/microsoft/azure-devops-mcp) may be a simpler fit.
+
+Configuration here uses CLI arguments and the `PERSONAL_ACCESS_TOKEN`/`ADO_MCP_AUTH_TOKEN`/`ado_mcp_project`/`ado_mcp_team` environment variables (this fork's existing convention, inherited from upstream) — not the `AZURE_DEVOPS_ORG_URL`/`AZURE_DEVOPS_AUTH_METHOD`/`AZURE_DEVOPS_PAT` variables used by other community Azure DevOps MCP servers.
 
 - [Prerequisites](#prerequisites)
-- [Build the Server](#build-the-server)
 - [Authentication](#authentication)
 - [Visual Studio Code](#visual-studio-code)
 - [Visual Studio](#visual-studio)
@@ -17,32 +18,17 @@ This guide explains how to run the local Azure DevOps MCP Server with supported 
 - [Cursor](#cursor)
 - [OpenCode](#opencode)
 - [Kilo Code](#kilo-code)
+- [Run from Source](#run-from-source)
 
 ## Prerequisites
 
 All local setups require:
 
 1. [Node.js 20 or later](https://nodejs.org/en/download).
-2. [Git](https://git-scm.com/downloads).
-3. Access to an Azure DevOps organization (cloud) or an Azure DevOps Server / TFS collection (on-premises).
-4. An MCP client listed below.
+2. Access to an Azure DevOps organization (cloud) or an Azure DevOps Server / TFS collection (on-premises).
+3. An MCP client listed below.
 
 Visual Studio Code users need [VS Code](https://code.visualstudio.com/download) or [VS Code Insiders](https://code.visualstudio.com/insiders). Visual Studio users need [Visual Studio 2022 version 17.14 or later](https://learn.microsoft.com/en-us/visualstudio/releases/2022/release-history).
-
-## Build the Server
-
-Every client configuration below runs the server with `node`, pointing at the `dist/index.js` this step produces. Do this once, then reuse the same path in every client section:
-
-```bash
-git clone https://github.com/sonyjv/azure-devops-mcp.git
-cd azure-devops-mcp
-npm install
-npm run build
-```
-
-(`npm install` also builds the server via its `prepare` script, so the separate `npm run build` isn't strictly required — run it again any time you pull new changes.)
-
-Note the absolute path to the cloned folder (e.g. `/Users/you/azure-devops-mcp` or `C:\Users\you\azure-devops-mcp`) — the examples below use `/absolute/path/to/azure-devops-mcp` as a placeholder for it. To pick up new changes later, run `git pull && npm install` in the cloned repo and restart the server from your MCP client.
 
 ## Authentication
 
@@ -65,8 +51,8 @@ This method opens a browser for Microsoft account sign-in. Omit the authenticati
   "servers": {
     "ado": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "<your-org>"]
+      "command": "npx",
+      "args": ["-y", "github:sonyjv/azure-devops-mcp", "<your-org>"]
     }
   }
 }
@@ -81,8 +67,8 @@ Uses the token from an active `az login` session. Requires the [Azure CLI](https
   "servers": {
     "ado": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "<your-org>", "--authentication", "azcli"]
+      "command": "npx",
+      "args": ["-y", "github:sonyjv/azure-devops-mcp", "<your-org>", "--authentication", "azcli"]
     }
   }
 }
@@ -93,7 +79,7 @@ Uses the token from an active `az login` session. Requires the [Azure CLI](https
 Use `env` to authenticate through `DefaultAzureCredential`. Configure a supported Azure Identity credential, then use this argument list:
 
 ```json
-["/absolute/path/to/azure-devops-mcp/dist/index.js", "<your-org>", "--authentication", "env"]
+["-y", "github:sonyjv/azure-devops-mcp", "<your-org>", "--authentication", "env"]
 ```
 
 ### Bearer Token Environment Variable
@@ -128,8 +114,8 @@ To connect to an on-premises Azure DevOps Server / TFS collection instead of Azu
   "servers": {
     "ado": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "http://tfsserver:8080/tfs/DefaultCollection", "--authentication", "pat"],
+      "command": "npx",
+      "args": ["-y", "github:sonyjv/azure-devops-mcp", "http://tfsserver:8080/tfs/DefaultCollection", "--authentication", "pat"],
       "env": {
         "PERSONAL_ACCESS_TOKEN": "<base64 email:pat, see Personal Access Token above>"
       }
@@ -158,8 +144,8 @@ To connect to an on-premises Azure DevOps Server / TFS collection instead of Azu
   "servers": {
     "ado": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "${input:ado_org}"]
+      "command": "npx",
+      "args": ["-y", "github:sonyjv/azure-devops-mcp", "${input:ado_org}"]
     }
   }
 }
@@ -192,8 +178,8 @@ Use Visual Studio 2022 version 17.14 or later, or Visual Studio 2026.
   "servers": {
     "ado": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "${input:ado_org}"]
+      "command": "npx",
+      "args": ["-y", "github:sonyjv/azure-devops-mcp", "${input:ado_org}"]
     }
   }
 }
@@ -213,8 +199,8 @@ Create or edit the configuration file `~/.copilot/mcp-config.json` and add:
 {
   "mcpServers": {
     "ado": {
-      "command": "node",
-      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "{Contoso}"],
+      "command": "npx",
+      "args": ["-y", "github:sonyjv/azure-devops-mcp", "{Contoso}"],
       "tools": ["*"]
     }
   }
@@ -234,7 +220,7 @@ Codex can run the Azure DevOps MCP Server as a local stdio MCP server from eithe
 For local development, start with the default interactive authentication flow:
 
 ```bash
-codex mcp add azure-devops -- node /absolute/path/to/azure-devops-mcp/dist/index.js Contoso
+codex mcp add azure-devops -- npx -y github:sonyjv/azure-devops-mcp Contoso
 ```
 
 Replace `Contoso` with your Azure DevOps organization name.
@@ -253,7 +239,7 @@ If your workstation already uses Azure CLI sign-in, authenticate first and confi
 
 ```bash
 az login
-codex mcp add azure-devops -- node /absolute/path/to/azure-devops-mcp/dist/index.js Contoso --authentication azcli
+codex mcp add azure-devops -- npx -y github:sonyjv/azure-devops-mcp Contoso --authentication azcli
 ```
 
 ### Manual Configuration
@@ -262,8 +248,8 @@ You can also edit `~/.codex/config.toml` directly:
 
 ```toml
 [mcp_servers.azure-devops]
-command = "node"
-args = ["/absolute/path/to/azure-devops-mcp/dist/index.js", "Contoso"]
+command = "npx"
+args = ["-y", "github:sonyjv/azure-devops-mcp", "Contoso"]
 ```
 
 Restart Codex after editing the config manually, then ask for a simple read-only operation such as `List ADO projects`.
@@ -275,7 +261,7 @@ See the [Claude Code MCP documentation](https://docs.anthropic.com/en/docs/claud
 For the Azure DevOps MCP Server, use the following command:
 
 ```bash
-claude mcp add --transport stdio azure-devops -- node /absolute/path/to/azure-devops-mcp/dist/index.js Contoso
+claude mcp add --transport stdio azure-devops -- npx -y github:sonyjv/azure-devops-mcp Contoso
 ```
 
 Replace `Contoso` with your organization name, then verify the connection:
@@ -293,8 +279,8 @@ claude mcp list
 {
   "mcpServers": {
     "ado": {
-      "command": "node",
-      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "{Contoso}"]
+      "command": "npx",
+      "args": ["-y", "github:sonyjv/azure-devops-mcp", "{Contoso}"]
     }
   }
 }
@@ -313,8 +299,8 @@ Create `.cursor/mcp.json` in your project and add:
 {
   "mcpServers": {
     "ado": {
-      "command": "node",
-      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "{Contoso}"]
+      "command": "npx",
+      "args": ["-y", "github:sonyjv/azure-devops-mcp", "{Contoso}"]
     }
   }
 }
@@ -336,7 +322,7 @@ On macOS or Linux, edit `~/.config/opencode/opencode.json` and add the `azure-de
   "mcp": {
     "azure-devops": {
       "type": "local",
-      "command": ["node", "/absolute/path/to/azure-devops-mcp/dist/index.js", "<your-org>"],
+      "command": ["npx", "-y", "github:sonyjv/azure-devops-mcp", "<your-org>"],
       "enabled": true
     }
   }
@@ -351,7 +337,7 @@ Replace `<your-org>` with your Azure DevOps organization name.
 > **Tip:** Limit loaded tools using domain filtering by appending `-d` flags to the command:
 >
 > ```json
-> ["node", "/absolute/path/to/azure-devops-mcp/dist/index.js", "<your-org>", "-d", "core", "work", "work-items"]
+> ["npx", "-y", "github:sonyjv/azure-devops-mcp", "<your-org>", "-d", "core", "work", "work-items"]
 > ```
 >
 > Available domains: `core`, `work`, `work-items`, `repositories`, `wiki`, `pipelines`, `search`, `test-plans`, `advanced-security`
@@ -372,8 +358,8 @@ Kilo Code supports global configuration for all workspaces and project configura
 {
   "mcpServers": {
     "azure-devops": {
-      "command": "node",
-      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "<your-org>"]
+      "command": "npx",
+      "args": ["-y", "github:sonyjv/azure-devops-mcp", "<your-org>"]
     }
   }
 }
@@ -383,14 +369,14 @@ Kilo Code supports global configuration for all workspaces and project configura
 
 Create `.kilocode/mcp.json` in your project root with the same content as above. This file can be committed to version control to share the setup with your team.
 
-For Windows Command Prompt, wrap the command:
+For Windows Command Prompt, wrap the `npx` command:
 
 > ```json
 > {
 >   "mcpServers": {
 >     "azure-devops": {
 >       "command": "cmd",
->       "args": ["/c", "node", "C:\\absolute\\path\\to\\azure-devops-mcp\\dist\\index.js", "<your-org>"]
+>       "args": ["/c", "npx", "-y", "github:sonyjv/azure-devops-mcp", "<your-org>"]
 >     }
 >   }
 > }
@@ -399,3 +385,38 @@ For Windows Command Prompt, wrap the command:
 Replace `<your-org>` with your Azure DevOps organization name. On first use, a browser window will open for Microsoft account login.
 
 For more on Kilo Code MCP configuration, see the [Kilo Code MCP documentation](https://kilo.ai/docs/automate/mcp/using-in-kilo-code).
+
+## Run from Source
+
+`npx -y github:sonyjv/azure-devops-mcp` (used throughout this guide) already builds and runs this fork with no manual steps. Clone and build it yourself only if you're modifying the code:
+
+1. Clone this repository.
+2. Install dependencies and build the server:
+
+   ```bash
+   npm install
+   npm run build
+   ```
+
+3. Configure your MCP client to run the built entry point. For VS Code, use:
+
+   ```json
+   {
+     "inputs": [
+       {
+         "id": "ado_org",
+         "type": "promptString",
+         "description": "Azure DevOps organization name (e.g. 'contoso')"
+       }
+     ],
+     "servers": {
+       "ado": {
+         "type": "stdio",
+         "command": "node",
+         "args": ["${workspaceFolder}/dist/index.js", "${input:ado_org}"]
+       }
+     }
+   }
+   ```
+
+4. Start the server from the MCP view and select its tools in Agent mode.
