@@ -126,6 +126,8 @@ To connect to an on-premises Azure DevOps Server / TFS collection instead of Azu
 
 > [!NOTE]
 > A few tools call fixed Azure DevOps Services endpoints rather than the connected server (the `search` domain's code/wiki/work-item search tools, and repository commit search) and don't work against Azure DevOps Server. Exclude `search` with `-d` (see [Using Domains](../README.md#using-domains-local-server)) if it isn't installed as an extension on your server.
+>
+> `core_get_identity_ids` has the same problem but lives in the `core` domain, which you generally shouldn't exclude (other tools depend on it for project lookups) — that one tool just won't resolve identities on Azure DevOps Server.
 
 ## Visual Studio Code
 
