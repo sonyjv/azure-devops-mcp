@@ -9,7 +9,7 @@
   "bugs": "https://github.com/sonyjv/azure-devops-mcp/issues",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sonyjv/azure-devops-mcp.git"
+    "url": "git+https://github.com/sonyjv/azure-devops-mcp.git"
   },
   "type": "module",
   "bin": {
