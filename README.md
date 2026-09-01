@@ -3,7 +3,7 @@
 > [!NOTE]
 > **This is a fork.** [sonyjv/azure-devops-mcp](https://github.com/sonyjv/azure-devops-mcp) is a personal fork of [microsoft/azure-devops-mcp](https://github.com/microsoft/azure-devops-mcp), the official Azure DevOps MCP Server. It adds support for connecting to an **on-premises Azure DevOps Server / TFS collection**, in addition to Azure DevOps Services (cloud) — see [Azure DevOps Server (On-Premises)](./docs/GETTINGSTARTED.md#azure-devops-server-on-premises).
 >
-> This fork isn't published to npm, but `npx` can run it straight from GitHub — no separate clone or build step needed. It is not intended to be merged upstream. See [Local MCP Server Installation](#local-mcp-server-installation-optional).
+> This fork is published to npm as [`@sonyjv/azure-devops-mcp`](https://www.npmjs.com/package/@sonyjv/azure-devops-mcp) (Microsoft's own `@azure-devops/mcp` name is upstream's) — run it with `npx -y @sonyjv/azure-devops-mcp`, no separate clone or build step needed. It is not intended to be merged upstream. See [Local MCP Server Installation](#local-mcp-server-installation-optional).
 
 > [!WARNING]
 > We recently completed a full tool consolidation that includes renaming of existing tools. Please see the [Toolset documentation](docs/TOOLSET.md) for the complete list of new tool names.
@@ -85,7 +85,7 @@ For the complete list of local tools, see [TOOLSET.md](./docs/TOOLSET.md).
 ## Local MCP Server Installation (Optional)
 
 > [!NOTE]
-> This fork isn't published to npm, so `npx -y @azure-devops/mcp` (as documented for the [upstream project](https://github.com/microsoft/azure-devops-mcp)) installs Microsoft's original package, **not** this fork's on-premises support. Instead, `npx` can run this fork directly from GitHub — `npx -y github:sonyjv/azure-devops-mcp` — with no separate clone or build step, exactly like installing a published npm package. `npx` builds it once on first use and caches the result, so later runs start immediately; it also means every run tracks whatever is currently on this fork's `main` branch. Clone-and-build (see [Run from Source](./docs/GETTINGSTARTED.md#run-from-source)) is only needed if you're modifying the code yourself.
+> This fork publishes under its own package name, `@sonyjv/azure-devops-mcp` — `npx -y @azure-devops/mcp` (as documented for the [upstream project](https://github.com/microsoft/azure-devops-mcp)) installs Microsoft's original package, **not** this fork's on-premises support. `npx -y @sonyjv/azure-devops-mcp` works exactly like installing any published npm package — no clone or build step, and no local `git` needed. If you'd rather always track the unreleased `main` branch instead of a published version, `npx -y github:sonyjv/azure-devops-mcp` also works, though it needs `git` and direct network access to GitHub, which some locked-down/corporate networks block even when npm registry access works fine. Clone-and-build (see [Run from Source](./docs/GETTINGSTARTED.md#run-from-source)) is only needed if you're modifying the code yourself.
 
 These steps use Visual Studio Code and GitHub Copilot. For other supported clients, including Visual Studio 2022, Codex, Claude Code, Cursor, OpenCode, and Kilo Code, see the [getting started guide](./docs/GETTINGSTARTED.md). That guide also covers connecting to an on-premises Azure DevOps Server / TFS collection instead of Azure DevOps Services — see [Azure DevOps Server (On-Premises)](./docs/GETTINGSTARTED.md#azure-devops-server-on-premises).
 
@@ -115,7 +115,7 @@ These steps use Visual Studio Code and GitHub Copilot. For other supported clien
     "ado": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "github:sonyjv/azure-devops-mcp", "${input:ado_org}"]
+      "args": ["-y", "@sonyjv/azure-devops-mcp", "${input:ado_org}"]
     }
   }
 }
@@ -126,7 +126,7 @@ These steps use Visual Studio Code and GitHub Copilot. For other supported clien
 5. Select the Azure DevOps tools, then try a prompt such as `List ADO projects`.
 6. When prompted, sign in with a Microsoft account that has access to the selected Azure DevOps organization (or configure PAT authentication for an on-premises server — see [Authentication](./docs/GETTINGSTARTED.md#authentication)).
 
-To pin to a specific commit instead of always tracking `main`, replace `github:sonyjv/azure-devops-mcp` with `github:sonyjv/azure-devops-mcp#<commit-sha>`.
+To pin to a specific released version instead of always resolving `latest`, replace `@sonyjv/azure-devops-mcp` with `@sonyjv/azure-devops-mcp@<version>` (see the [available versions](https://www.npmjs.com/package/@sonyjv/azure-devops-mcp?activeTab=versions)).
 
 For better tool selection, add `.github/copilot-instructions.md` to your project with this instruction:
 
@@ -153,7 +153,7 @@ Add `-d` followed by the domains to the server arguments. For example, this conf
     "ado_with_filtered_domains": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "github:sonyjv/azure-devops-mcp", "${input:ado_org}", "-d", "core", "work", "work-items"]
+      "args": ["-y", "@sonyjv/azure-devops-mcp", "${input:ado_org}", "-d", "core", "work", "work-items"]
     }
   }
 }
@@ -175,7 +175,7 @@ Set default Azure DevOps project and team values in `.vscode/mcp.json` so tools 
     "ado": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "github:sonyjv/azure-devops-mcp", "myorg", "--authentication", "azcli"],
+      "args": ["-y", "@sonyjv/azure-devops-mcp", "myorg", "--authentication", "azcli"],
       "env": {
         "ado_mcp_project": "Contoso",
         "ado_mcp_team": "Fabrikam Team"

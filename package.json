@@ -1,7 +1,7 @@
 {
-  "name": "@azure-devops/mcp",
-  "version": "2.9.0",
-  "mcpName": "microsoft.com/azure-devops",
+  "name": "@sonyjv/azure-devops-mcp",
+  "version": "2.9.0-onprem.1",
+  "mcpName": "io.github.sonyjv/azure-devops-mcp",
   "description": "MCP server for interacting with Azure DevOps",
   "license": "MIT",
   "author": "Microsoft Corporation",

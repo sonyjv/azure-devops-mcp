@@ -17,7 +17,7 @@ Example
     "ado": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "github:sonyjv/azure-devops-mcp", "${input:ado_org}"],
+      "args": ["-y", "@sonyjv/azure-devops-mcp", "${input:ado_org}"],
       "env": {
         "LOG_LEVEL": "debug"
       }
@@ -26,7 +26,7 @@ Example
 }
 ```
 
-(This fork isn't published to npm, so `github:sonyjv/azure-devops-mcp` is used in place of `@azure-devops/mcp` — see [Getting Started](./GETTINGSTARTED.md).)
+(This fork publishes under its own package name, `@sonyjv/azure-devops-mcp`, in place of upstream's `@azure-devops/mcp` — see [Getting Started](./GETTINGSTARTED.md).)
 
 ## Common MCP Issues
 
@@ -89,7 +89,7 @@ For automated scenarios or when you want to use a token stored in an environment
 2. **Use the envvar authentication type:**
 
    ```bash
-   npx -y github:sonyjv/azure-devops-mcp myorg --authentication envvar
+   npx -y @sonyjv/azure-devops-mcp myorg --authentication envvar
    ```
 
 3. **For MCP configuration files, update your `.vscode/mcp.json`:**
@@ -106,7 +106,7 @@ For automated scenarios or when you want to use a token stored in an environment
        "ado": {
          "type": "stdio",
          "command": "npx",
-         "args": ["-y", "github:sonyjv/azure-devops-mcp", "${input:ado_org}", "--authentication", "envvar"]
+         "args": ["-y", "@sonyjv/azure-devops-mcp", "${input:ado_org}", "--authentication", "envvar"]
        }
      }
    }
@@ -161,7 +161,7 @@ Use one of the non-interactive authentication methods:
 3. Start the server with `--authentication envvar`:
 
    ```bash
-   npx -y github:sonyjv/azure-devops-mcp myorg --authentication envvar
+   npx -y @sonyjv/azure-devops-mcp myorg --authentication envvar
    ```
 
    For Claude Code:
@@ -169,7 +169,7 @@ Use one of the non-interactive authentication methods:
    ```bash
    claude mcp add azure-devops -s user \
      -e ADO_MCP_AUTH_TOKEN="your-azure-devops-pat" \
-     -- npx -y github:sonyjv/azure-devops-mcp myorg --authentication envvar
+     -- npx -y @sonyjv/azure-devops-mcp myorg --authentication envvar
    ```
 
 **Option 2: Azure CLI authentication**
@@ -183,7 +183,7 @@ Use one of the non-interactive authentication methods:
 2. Start the server with `--authentication azcli`:
 
    ```bash
-   npx -y github:sonyjv/azure-devops-mcp myorg --authentication azcli
+   npx -y @sonyjv/azure-devops-mcp myorg --authentication azcli
    ```
 
    > **Note:** If your Azure DevOps organization is in a different tenant than your default `az` CLI tenant, you must also pass `--tenant <tenant-id>`. See the [Multi-Tenant Authentication Problems](#multi-tenant-authentication-problems-when-using-azcli) section below.
@@ -227,7 +227,7 @@ Try using Azure login context instead:
        "ado": {
          "type": "stdio",
          "command": "npx",
-         "args": ["-y", "github:sonyjv/azure-devops-mcp", "${input:ado_org}", "--authentication", "azcli"]
+         "args": ["-y", "@sonyjv/azure-devops-mcp", "${input:ado_org}", "--authentication", "azcli"]
        }
      }
    }
@@ -279,7 +279,7 @@ The MCP server may be authenticating with a different tenant than your Azure Dev
        "ado": {
          "type": "stdio",
          "command": "npx",
-         "args": ["-y", "github:sonyjv/azure-devops-mcp", "${input:ado_org}", "--authentication", "azcli", "--tenant", "${input:ado_tenant}"]
+         "args": ["-y", "@sonyjv/azure-devops-mcp", "${input:ado_org}", "--authentication", "azcli", "--tenant", "${input:ado_tenant}"]
        }
      }
    }
