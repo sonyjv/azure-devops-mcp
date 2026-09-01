@@ -243,12 +243,15 @@ describe("PAT authentication", () => {
   });
 
   describe("OAuth authentication", () => {
-    it("forwards MSAL log messages to the application logger", () => {
+    it("forwards MSAL log messages to the application logger", async () => {
       (PublicClientApplication as unknown as jest.Mock).mockImplementation(() => ({ acquireTokenInteractive: jest.fn() }));
 
-      createAuthenticator("oauth");
+      const authenticator = createAuthenticator("oauth");
+      // The broker client is built lazily on first use (see getBrokerClient in src/auth.ts),
+      // so it's the second PublicClientApplication call — the first is the always-eager fallback.
+      await authenticator().catch(() => undefined);
 
-      const config = (PublicClientApplication as unknown as jest.Mock).mock.calls[0][0];
+      const config = (PublicClientApplication as unknown as jest.Mock).mock.calls[1][0];
       expect(() => config.system.loggerOptions.loggerCallback(2, "MSAL message")).not.toThrow();
     });
 
@@ -260,9 +263,11 @@ describe("PAT authentication", () => {
           await openBrowser("https://login.example.com/fallback");
           return { accessToken: "fallback-token", account: null };
         });
+        // The fallback client is constructed eagerly (first call); the broker client is only
+        // built lazily on first use, inside getToken() (second call).
         (PublicClientApplication as unknown as jest.Mock)
-          .mockImplementationOnce(() => ({ acquireTokenInteractive: brokerAcquireTokenInteractive }))
-          .mockImplementationOnce(() => ({ acquireTokenInteractive: fallbackAcquireTokenInteractive }));
+          .mockImplementationOnce(() => ({ acquireTokenInteractive: fallbackAcquireTokenInteractive }))
+          .mockImplementationOnce(() => ({ acquireTokenInteractive: brokerAcquireTokenInteractive }));
 
         await expect(createAuthenticator("oauth")()).resolves.toBe("fallback-token");
 
@@ -322,6 +327,32 @@ describe("PAT authentication", () => {
       (PublicClientApplication as unknown as jest.Mock).mockImplementation(() => ({ acquireTokenInteractive }));
 
       await expect(createAuthenticator("oauth")()).rejects.toThrow("Failed to obtain Azure DevOps OAuth token");
+    });
+
+    it("falls back to browser authentication (no broker attempt at all) when the native broker module fails to load", async () => {
+      // Simulates a machine where @azure/msal-node-extensions' native keytar binding
+      // isn't available (missing prebuilt binary, blocked install script, no build
+      // toolchain, etc.) — the dynamic import in getBrokerClient() should reject, and
+      // every auth type other than 'interactive' must be unaffected by this at all.
+      await jest.isolateModulesAsync(async () => {
+        jest.doMock("@azure/msal-node-extensions", () => {
+          throw new Error("simulated native module load failure");
+        });
+
+        const { createAuthenticator: isolatedCreateAuthenticator } = await import("../../src/auth");
+        const fallbackAcquireTokenInteractive = jest.fn().mockImplementation(async ({ openBrowser }: { openBrowser: (url: string) => Promise<void> }) => {
+          await openBrowser("https://login.example.com/no-broker");
+          return { accessToken: "no-broker-token", account: null };
+        });
+        // Only one PublicClientApplication is ever constructed in this scenario (the
+        // fallback) — the broker one is never reached since the import itself throws.
+        (PublicClientApplication as unknown as jest.Mock).mockImplementationOnce(() => ({ acquireTokenInteractive: fallbackAcquireTokenInteractive }));
+
+        await expect(isolatedCreateAuthenticator("oauth")()).resolves.toBe("no-broker-token");
+
+        expect(PublicClientApplication).toHaveBeenCalledTimes(1);
+        expect(open).toHaveBeenCalledWith("https://login.example.com/no-broker");
+      });
     });
   });
 });

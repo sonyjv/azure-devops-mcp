@@ -3,7 +3,6 @@
 
 import { AzureCliCredential, ChainedTokenCredential, DefaultAzureCredential, TokenCredential } from "@azure/identity";
 import { AccountInfo, AuthenticationResult, PublicClientApplication } from "@azure/msal-node";
-import { NativeBrokerPlugin } from "@azure/msal-node-extensions";
 import open from "open";
 import { logger } from "./logger.js";
 
@@ -62,78 +61,104 @@ class OAuthAuthenticator {
   static zeroTenantId = "00000000-0000-0000-0000-000000000000";
 
   private accountId: AccountInfo | null;
-  private publicClientApp: PublicClientApplication;
-  private publicClientAppFallback: PublicClientApplication;
+  private readonly authority: string;
+  private readonly publicClientAppFallback: PublicClientApplication;
+  // undefined = not yet attempted; null = attempted and unavailable.
+  private brokerClientApp: PublicClientApplication | null | undefined;
 
   constructor(tenantId?: string) {
     this.accountId = null;
 
-    let authority = OAuthAuthenticator.defaultAuthority;
     if (tenantId && tenantId !== OAuthAuthenticator.zeroTenantId) {
-      authority = `https://login.microsoftonline.com/${tenantId}`;
+      this.authority = `https://login.microsoftonline.com/${tenantId}`;
       logger.debug(`OAuthAuthenticator: Using tenant-specific authority for tenantId='${tenantId}'`);
     } else {
+      this.authority = OAuthAuthenticator.defaultAuthority;
       logger.debug(`OAuthAuthenticator: Using default common authority`);
     }
 
-    this.publicClientApp = new PublicClientApplication({
-      auth: {
-        clientId: OAuthAuthenticator.clientId,
-        authority,
-      },
-      broker: {
-        nativeBrokerPlugin: new NativeBrokerPlugin(),
-      },
-      system: {
-        loggerOptions: {
-          loggerCallback: (level, message) => {
-            logger.debug(`MSALClient[${level}]: ${message}`);
-          },
-        },
-      },
-    });
     this.publicClientAppFallback = new PublicClientApplication({
       auth: {
         clientId: OAuthAuthenticator.clientId,
-        authority,
+        authority: this.authority,
       },
     });
     logger.debug(`OAuthAuthenticator: Initialized with clientId='${OAuthAuthenticator.clientId}'`);
   }
 
+  /**
+   * Lazily builds the broker-enabled MSAL client. @azure/msal-node-extensions (and its
+   * native keytar dependency) is an optional dependency: on a machine where that native
+   * binding failed to install — a missing prebuilt binary, a blocked/unapproved install
+   * script, no native build toolchain — this returns null instead of throwing, so every
+   * auth type keeps working via the always-available non-broker client below rather than
+   * every auth type (including 'pat') crashing at startup over an interactive-only feature.
+   */
+  private async getBrokerClient(): Promise<PublicClientApplication | null> {
+    if (this.brokerClientApp !== undefined) return this.brokerClientApp;
+    try {
+      const { NativeBrokerPlugin } = await import("@azure/msal-node-extensions");
+      this.brokerClientApp = new PublicClientApplication({
+        auth: {
+          clientId: OAuthAuthenticator.clientId,
+          authority: this.authority,
+        },
+        broker: {
+          nativeBrokerPlugin: new NativeBrokerPlugin(),
+        },
+        system: {
+          loggerOptions: {
+            loggerCallback: (level, message) => {
+              logger.debug(`MSALClient[${level}]: ${message}`);
+            },
+          },
+        },
+      });
+      logger.debug(`OAuthAuthenticator: Native broker plugin loaded successfully`);
+    } catch (error) {
+      logger.debug(`OAuthAuthenticator: Native broker plugin unavailable, continuing without it: ${error instanceof Error ? error.message : String(error)}`);
+      this.brokerClientApp = null;
+    }
+    return this.brokerClientApp;
+  }
+
   public async getToken(): Promise<string> {
     let authResult: AuthenticationResult | null = null;
-    if (this.accountId) {
-      logger.debug(`OAuthAuthenticator: Attempting silent token acquisition for cached account`);
-      try {
-        authResult = await this.publicClientApp.acquireTokenSilent({
-          scopes,
-          account: this.accountId,
-        });
-        logger.debug(`OAuthAuthenticator: Successfully acquired token silently`);
-      } catch (error) {
-        logger.debug(`OAuthAuthenticator: Silent token acquisition failed: ${error instanceof Error ? error.message : String(error)}`);
-        authResult = null;
+    const brokerClient = await this.getBrokerClient();
+
+    if (brokerClient) {
+      if (this.accountId) {
+        logger.debug(`OAuthAuthenticator: Attempting silent token acquisition for cached account`);
+        try {
+          authResult = await brokerClient.acquireTokenSilent({
+            scopes,
+            account: this.accountId,
+          });
+          logger.debug(`OAuthAuthenticator: Successfully acquired token silently`);
+        } catch (error) {
+          logger.debug(`OAuthAuthenticator: Silent token acquisition failed: ${error instanceof Error ? error.message : String(error)}`);
+          authResult = null;
+        }
+      } else {
+        logger.debug(`OAuthAuthenticator: No cached account available, interactive auth required`);
       }
-    } else {
-      logger.debug(`OAuthAuthenticator: No cached account available, interactive auth required`);
-    }
-    if (!authResult) {
-      logger.debug(`OAuthAuthenticator: Starting interactive token acquisition`);
-      try {
-        authResult = await this.publicClientApp.acquireTokenInteractive({
-          scopes,
-          openBrowser: async (url) => {
-            logger.debug(`OAuthAuthenticator: Opening browser for authentication with target URL: ${url}`);
-            open(url);
-          },
-        });
-        this.accountId = authResult.account;
-        logger.debug(`OAuthAuthenticator: Successfully acquired token interactively, account cached`);
-      } catch (error) {
-        const msalErrorMessage = (error as any).platformBrokerError ? JSON.stringify((error as any).platformBrokerError) : "";
-        logger.debug(`OAuthAuthenticator: Interactive token acquisition failed: ${error instanceof Error ? error.message + msalErrorMessage : String(error)}`);
-        authResult = null;
+      if (!authResult) {
+        logger.debug(`OAuthAuthenticator: Starting interactive token acquisition`);
+        try {
+          authResult = await brokerClient.acquireTokenInteractive({
+            scopes,
+            openBrowser: async (url) => {
+              logger.debug(`OAuthAuthenticator: Opening browser for authentication with target URL: ${url}`);
+              open(url);
+            },
+          });
+          this.accountId = authResult.account;
+          logger.debug(`OAuthAuthenticator: Successfully acquired token interactively, account cached`);
+        } catch (error) {
+          const msalErrorMessage = (error as any).platformBrokerError ? JSON.stringify((error as any).platformBrokerError) : "";
+          logger.debug(`OAuthAuthenticator: Interactive token acquisition failed: ${error instanceof Error ? error.message + msalErrorMessage : String(error)}`);
+          authResult = null;
+        }
       }
     }
     if (!authResult) {
