@@ -110,6 +110,50 @@ describe("PAT authentication", () => {
       const rewrittenRequest = fetchMock.mock.calls[0][0] as Request;
       expect(rewrittenRequest.headers.get("Authorization")).toBe(`Basic ${basicValue}`);
     });
+
+    describe("with a configured on-premises host", () => {
+      it("rewrites the PAT for the configured host over plain http", async () => {
+        const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(new Response());
+        globalThis.fetch = fetchMock;
+        installPatFetchInterceptor(basicValue, "tfsserver");
+
+        await fetch("http://tfsserver:8080/tfs/DefaultCollection/_apis/wit/workitems", { headers: { Authorization: `Bearer ${basicValue}` } });
+
+        const rewrittenInit = fetchMock.mock.calls[0][1];
+        expect(new Headers(rewrittenInit?.headers).get("Authorization")).toBe(`Basic ${basicValue}`);
+      });
+
+      it("is case-insensitive when matching the configured host", async () => {
+        const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(new Response());
+        globalThis.fetch = fetchMock;
+        installPatFetchInterceptor(basicValue, "TFSServer");
+
+        await fetch("http://tfsserver:8080/tfs/DefaultCollection", { headers: { Authorization: `Bearer ${basicValue}` } });
+
+        const rewrittenInit = fetchMock.mock.calls[0][1];
+        expect(new Headers(rewrittenInit?.headers).get("Authorization")).toBe(`Basic ${basicValue}`);
+      });
+
+      it("still refuses an unrelated http host", async () => {
+        const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(new Response());
+        globalThis.fetch = fetchMock;
+        installPatFetchInterceptor(basicValue, "tfsserver");
+
+        await expect(fetch("http://attacker.example/path", { headers: { Authorization: `Bearer ${basicValue}` } })).rejects.toThrow(
+          "Refusing to send a Personal Access Token to untrusted destination"
+        );
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+
+      it("still requires https for the built-in cloud hosts even when a configured host is set", async () => {
+        const fetchMock = jest.fn<typeof fetch>().mockResolvedValue(new Response());
+        globalThis.fetch = fetchMock;
+        installPatFetchInterceptor(basicValue, "tfsserver");
+
+        await expect(fetch("http://dev.azure.com/org", { headers: { Authorization: `Bearer ${basicValue}` } })).rejects.toThrow("Refusing to send a Personal Access Token to untrusted destination");
+        expect(fetchMock).not.toHaveBeenCalled();
+      });
+    });
   });
 
   describe("createAuthenticator('pat')", () => {

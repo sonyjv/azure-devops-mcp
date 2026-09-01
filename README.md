@@ -1,18 +1,19 @@
 # Azure DevOps MCP Server
 
+> [!NOTE]
+> **This is a fork.** [sonyjv/azure-devops-mcp](https://github.com/sonyjv/azure-devops-mcp) is a personal fork of [microsoft/azure-devops-mcp](https://github.com/microsoft/azure-devops-mcp), the official Azure DevOps MCP Server. It adds support for connecting to an **on-premises Azure DevOps Server / TFS collection**, in addition to Azure DevOps Services (cloud) — see [Azure DevOps Server (On-Premises)](./docs/GETTINGSTARTED.md#azure-devops-server-on-premises).
+>
+> This fork is not published to npm and is not intended to be merged upstream. To use it, run it from source — see [Local MCP Server Installation](#local-mcp-server-installation-optional).
+
 > [!WARNING]
 > We recently completed a full tool consolidation that includes renaming of existing tools. Please see the [Toolset documentation](docs/TOOLSET.md) for the complete list of new tool names.
->
-> If this is a breaking change for your agents or skills, you can temporarily pin the version to `@azure-devops/mcp@2.8.1`
 
-This project gives AI agents access to Azure DevOps through the Model Context Protocol (MCP). Use the hosted remote server for the simplest setup, or run the local server when you need a `stdio` connection.
+This project gives AI agents access to Azure DevOps through the Model Context Protocol (MCP). Use the hosted remote server for the simplest setup, or run the local server when you need a `stdio` connection — or when you need on-premises Azure DevOps Server support, which the hosted remote server (below) does not provide.
 
 ## Table of Contents
 
 > [!IMPORTANT]
-> We recommend using the [Remote MCP Server](https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server) instead of this local server. It requires no installation and gets new features first.
->
-> [Learn more](#remote-mcp-server-recommended)
+> If you're on Azure DevOps Services (cloud) and don't need on-premises support, Microsoft's [Remote MCP Server](https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server) requires no installation and gets new features first — see [Learn more](#remote-mcp-server-recommended). It does **not** support on-premises Azure DevOps Server, which is this fork's reason for existing — on-prem users need the local server below.
 
 1. [Overview](#overview)
 2. [Design](#design)
@@ -83,23 +84,33 @@ For the complete list of local tools, see [TOOLSET.md](./docs/TOOLSET.md).
 
 ## Local MCP Server Installation (Optional)
 
-> [!IMPORTANT]
-> Start with the Remote MCP Server first. Use the local MCP Server only if your scenario specifically requires a local `stdio` setup.
+> [!NOTE]
+> This fork isn't published to npm, so `npx -y @azure-devops/mcp` (as documented for the [upstream project](https://github.com/microsoft/azure-devops-mcp)) installs Microsoft's original package, **not** this fork's on-premises support. Build and run this fork from source instead, as shown below.
 
-These steps use Visual Studio Code and GitHub Copilot. For other supported clients, including Visual Studio 2022, Codex, Claude Code, Cursor, OpenCode, and Kilo Code, see the [getting started guide](./docs/GETTINGSTARTED.md).
+These steps use Visual Studio Code and GitHub Copilot. For other supported clients, including Visual Studio 2022, Codex, Claude Code, Cursor, OpenCode, and Kilo Code, see the [getting started guide](./docs/GETTINGSTARTED.md). That guide also covers connecting to an on-premises Azure DevOps Server / TFS collection instead of Azure DevOps Services — see [Azure DevOps Server (On-Premises)](./docs/GETTINGSTARTED.md#azure-devops-server-on-premises).
 
 ### Prerequisites
 
 1. Install [VS Code](https://code.visualstudio.com/download) or [VS Code Insiders](https://code.visualstudio.com/insiders).
-2. Install [Node.js 20 or later](https://nodejs.org/en/download).
+2. Install [Node.js 20 or later](https://nodejs.org/en/download) and [Git](https://git-scm.com/downloads).
 3. Open your project in VS Code.
 
 ### Installation
 
-#### Install from npm
+#### Install from source
 
-1. Create `.vscode/mcp.json` in your project.
-2. Add this configuration:
+1. Clone this fork and build it:
+
+   ```bash
+   git clone https://github.com/sonyjv/azure-devops-mcp.git
+   cd azure-devops-mcp
+   npm install
+   npm run build
+   ```
+
+   (`npm install` also builds the server via its `prepare` script, so a separate `npm run build` isn't strictly required — run it again any time you pull new changes.)
+
+2. Create `.vscode/mcp.json` in the project you want to use the server from, and add this configuration. Replace `/absolute/path/to/azure-devops-mcp` with the path where you cloned the repo in step 1.
 
 ```json
 {
@@ -107,14 +118,14 @@ These steps use Visual Studio Code and GitHub Copilot. For other supported clien
     {
       "id": "ado_org",
       "type": "promptString",
-      "description": "Azure DevOps organization name  (e.g. 'contoso')"
+      "description": "Azure DevOps organization name (e.g. 'contoso'), or a full on-premises collection URL (e.g. 'http://tfsserver:8080/tfs/DefaultCollection')"
     }
   ],
   "servers": {
     "ado": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@azure-devops/mcp", "${input:ado_org}"]
+      "command": "node",
+      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "${input:ado_org}"]
     }
   }
 }
@@ -123,9 +134,9 @@ These steps use Visual Studio Code and GitHub Copilot. For other supported clien
 3. Save the file, then start the `ado` server from the MCP view in VS Code.
 4. Open GitHub Copilot Chat and switch to [Agent mode](https://code.visualstudio.com/blogs/2025/02/24/introducing-copilot-agent-mode).
 5. Select the Azure DevOps tools, then try a prompt such as `List ADO projects`.
-6. When prompted, sign in with a Microsoft account that has access to the selected Azure DevOps organization.
+6. When prompted, sign in with a Microsoft account that has access to the selected Azure DevOps organization (or configure PAT authentication for an on-premises server — see [Authentication](./docs/GETTINGSTARTED.md#authentication)).
 
-To use nightly builds, replace `@azure-devops/mcp` with `@azure-devops/mcp@next` in the configuration.
+To pick up new changes later, run `git pull && npm install` in the cloned repo, then restart the server from the MCP view.
 
 For better tool selection, add `.github/copilot-instructions.md` to your project with this instruction:
 
@@ -151,8 +162,8 @@ Add `-d` followed by the domains to the server arguments. For example, this conf
   "servers": {
     "ado_with_filtered_domains": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@azure-devops/mcp", "${input:ado_org}", "-d", "core", "work", "work-items"]
+      "command": "node",
+      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "${input:ado_org}", "-d", "core", "work", "work-items"]
     }
   }
 }
@@ -173,8 +184,8 @@ Set default Azure DevOps project and team values in `.vscode/mcp.json` so tools 
   "servers": {
     "ado": {
       "type": "stdio",
-      "command": "npx",
-      "args": ["-y", "@azure-devops/mcp", "myorg", "--authentication", "azcli"],
+      "command": "node",
+      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "myorg", "--authentication", "azcli"],
       "env": {
         "ado_mcp_project": "Contoso",
         "ado_mcp_team": "Fabrikam Team"

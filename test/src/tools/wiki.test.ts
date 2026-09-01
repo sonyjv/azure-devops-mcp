@@ -965,6 +965,45 @@ describe("configureWikiTools", () => {
       expect(mockWikiApi.getPageText).not.toHaveBeenCalled();
     });
 
+    it("should reject a URL pointing to a different on-premises server (unrecognized host on both sides)", async () => {
+      mockConnection.serverUrl = "http://tfsserver:8080/tfs/DefaultCollection";
+      configureWikiTools(server, tokenProvider, connectionProvider, userAgentProvider);
+      const call = (server.tool as jest.Mock).mock.calls.find(([toolName]) => toolName === "wiki");
+      if (!call) throw new Error("wiki tool not registered");
+      const [, , , handler] = call;
+
+      const url = "http://other-tfsserver:8080/tfs/DefaultCollection/project/_wiki/wikis/myWiki?pagePath=%2FHome";
+      const result = await handler({ action: "get_page_content" as const, url });
+
+      expect(result.isError).toBe(true);
+      expect(result.content[0].text).toContain("Cross-organization requests are not allowed");
+      expect(mockWikiApi.getPageText).not.toHaveBeenCalled();
+    });
+
+    it("should allow a URL on the same on-premises server (unrecognized host on both sides)", async () => {
+      mockConnection.serverUrl = "http://tfsserver:8080/tfs/DefaultCollection";
+      configureWikiTools(server, tokenProvider, connectionProvider, userAgentProvider);
+      const call = (server.tool as jest.Mock).mock.calls.find(([toolName]) => toolName === "wiki");
+      if (!call) throw new Error("wiki tool not registered");
+      const [, , , handler] = call;
+
+      const mockStream = {
+        setEncoding: jest.fn(),
+        on: function (event: string, cb: (chunk?: unknown) => void) {
+          if (event === "data") setImmediate(() => cb("same server content"));
+          if (event === "end") setImmediate(() => cb());
+          return this;
+        },
+      };
+      mockWikiApi.getPageText.mockResolvedValue(mockStream as unknown);
+
+      const url = "http://tfsserver:8080/tfs/DefaultCollection/project/_wiki/wikis/myWiki?pagePath=%2FHome";
+      const result = await handler({ action: "get_page_content" as const, url });
+
+      expect(result.isError).toBeUndefined();
+      expect(result.content[0].text).toContain("same server content");
+    });
+
     it("should allow a URL that matches the configured organization regardless of casing", async () => {
       configureWikiTools(server, tokenProvider, connectionProvider, userAgentProvider);
       const call = (server.tool as jest.Mock).mock.calls.find(([toolName]) => toolName === "wiki");

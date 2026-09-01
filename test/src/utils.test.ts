@@ -2,7 +2,18 @@
 // Licensed under the MIT License.
 
 import { AlertType, AlertValidityStatus, Confidence, Severity, State } from "azure-devops-node-api/interfaces/AlertInterfaces";
-import { createEnumMapping, encodeFormattedValue, extractAdoStreamError, getCliArgs, getEnumKeys, getOrgFromUrl, mapStringArrayToEnum, mapStringToEnum, safeEnumConvert } from "../../src/utils";
+import {
+  createEnumMapping,
+  encodeFormattedValue,
+  extractAdoStreamError,
+  getCliArgs,
+  getEnumKeys,
+  getOrgFromUrl,
+  mapStringArrayToEnum,
+  mapStringToEnum,
+  resolveOrgUrl,
+  safeEnumConvert,
+} from "../../src/utils";
 
 describe("utils", () => {
   describe("getCliArgs", () => {
@@ -592,5 +603,31 @@ describe("getOrgFromUrl", () => {
 
   it("returns null when the legacy host has no organization subdomain", () => {
     expect(getOrgFromUrl("https://visualstudio.com")).toBeNull();
+  });
+});
+
+describe("resolveOrgUrl", () => {
+  it("builds the cloud URL from a bare organization name", () => {
+    expect(resolveOrgUrl("contoso")).toEqual({ orgUrl: "https://dev.azure.com/contoso", cloudOrgName: "contoso" });
+  });
+
+  it("accepts a full Azure DevOps Services URL and still recognizes it as cloud", () => {
+    expect(resolveOrgUrl("https://dev.azure.com/contoso")).toEqual({ orgUrl: "https://dev.azure.com/contoso", cloudOrgName: "contoso" });
+    expect(resolveOrgUrl("https://contoso.visualstudio.com")).toEqual({ orgUrl: "https://contoso.visualstudio.com", cloudOrgName: "contoso" });
+  });
+
+  it("uses an on-premises collection URL verbatim and reports no cloud org", () => {
+    expect(resolveOrgUrl("http://tfsserver:8080/tfs/DefaultCollection")).toEqual({
+      orgUrl: "http://tfsserver:8080/tfs/DefaultCollection",
+      cloudOrgName: null,
+    });
+  });
+
+  it("strips trailing slashes from a URL form", () => {
+    expect(resolveOrgUrl("https://dev.azure.com/contoso/")).toEqual({ orgUrl: "https://dev.azure.com/contoso", cloudOrgName: "contoso" });
+    expect(resolveOrgUrl("http://tfsserver:8080/tfs/DefaultCollection///")).toEqual({
+      orgUrl: "http://tfsserver:8080/tfs/DefaultCollection",
+      cloudOrgName: null,
+    });
   });
 });

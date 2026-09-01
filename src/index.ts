@@ -14,7 +14,7 @@ import { getOrgTenant } from "./org-tenants.js";
 //import { configurePrompts } from "./prompts.js";
 import { configureAllTools } from "./tools.js";
 import { UserAgentComposer } from "./useragent.js";
-import { getCliArgs } from "./utils.js";
+import { getCliArgs, resolveOrgUrl } from "./utils.js";
 import { packageVersion } from "./version.js";
 import { DomainsManager } from "./shared/domains.js";
 
@@ -31,7 +31,7 @@ const argv = yargs(getCliArgs())
   .version(packageVersion)
   .command("$0 <organization> [options]", "Azure DevOps MCP Server", (yargs) => {
     yargs.positional("organization", {
-      describe: "Azure DevOps organization name",
+      describe: "Azure DevOps organization name (e.g. 'contoso'), or a full base URL for on-premises Azure DevOps Server / TFS (e.g. 'http://tfsserver:8080/tfs/DefaultCollection')",
       type: "string",
       demandOption: true,
     });
@@ -58,8 +58,11 @@ const argv = yargs(getCliArgs())
   .help()
   .parseSync();
 
-export const orgName = argv.organization as string;
-const orgUrl = "https://dev.azure.com/" + orgName;
+const { orgUrl, cloudOrgName } = resolveOrgUrl(argv.organization as string);
+// Preserved for the handful of tools that still call fixed Azure DevOps Services
+// endpoints (e.g. code/wiki/work-item search) rather than the connected server's URL.
+// Those remain cloud-only; see docs/TOOLSET.md and README for the on-prem limitation.
+export const orgName = cloudOrgName ?? (argv.organization as string);
 
 const domainsManager = new DomainsManager(argv.domains);
 export const enabledDomains = domainsManager.getEnabledDomains();
@@ -105,12 +108,18 @@ async function main() {
   server.server.oninitialized = () => {
     userAgentComposer.appendMcpClientInfo(server.server.getClientVersion());
   };
-  const tenantId = argv.tenant ?? (await getOrgTenant(orgName));
+  if (!cloudOrgName && !["pat", "envvar"].includes(argv.authentication)) {
+    logger.warn(
+      `Authentication type '${argv.authentication}' was requested against a non-Azure DevOps Services URL ('${orgUrl}'). Azure DevOps Server (on-premises) generally only supports 'pat' (or 'envvar') authentication.`
+    );
+  }
+
+  const tenantId = argv.tenant ?? (cloudOrgName ? await getOrgTenant(cloudOrgName) : undefined);
   const authenticator = createAuthenticator(argv.authentication, tenantId);
 
   if (argv.authentication === "pat") {
     const basicValue = await authenticator();
-    installPatFetchInterceptor(basicValue);
+    installPatFetchInterceptor(basicValue, new URL(orgUrl).hostname);
     logger.debug("PAT mode: global fetch interceptor installed to rewrite Bearer -> Basic auth headers");
   }
 

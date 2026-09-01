@@ -142,6 +142,29 @@ export function getOrgFromUrl(url: string): string | null {
 }
 
 /**
+ * Resolves the CLI `organization` argument to an Azure DevOps connection URL.
+ *
+ * Accepts either a bare Azure DevOps Services organization name (e.g. "contoso"),
+ * or a full base URL, which also covers on-premises Azure DevOps Server / TFS
+ * collections (e.g. "http://tfsserver:8080/tfs/DefaultCollection").
+ *
+ * `cloudOrgName` is non-null only when the resolved URL is a recognized Azure
+ * DevOps Services host (see {@link getOrgFromUrl}) — callers use it to gate
+ * cloud-only behavior (AAD tenant discovery, PAT host restrictions) that doesn't
+ * apply to on-premises servers.
+ *
+ * @param organizationArg The raw `organization` CLI argument.
+ * @returns The resolved connection URL and, when applicable, the cloud org name.
+ */
+export function resolveOrgUrl(organizationArg: string): { orgUrl: string; cloudOrgName: string | null } {
+  if (/^https?:\/\//i.test(organizationArg)) {
+    const orgUrl = organizationArg.replace(/\/+$/, "");
+    return { orgUrl, cloudOrgName: getOrgFromUrl(orgUrl) };
+  }
+  return { orgUrl: `https://dev.azure.com/${organizationArg}`, cloudOrgName: organizationArg };
+}
+
+/**
  * Convert a Node.js ReadableStream to a string.
  * Shared utility for consistent stream handling across tools.
  */

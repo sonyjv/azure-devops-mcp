@@ -16,9 +16,20 @@ function isPatAllowedHost(hostname: string): boolean {
   return patAllowedHosts.has(normalizedHostname) || normalizedHostname.endsWith(".visualstudio.com");
 }
 
-function installPatFetchInterceptor(basicValue: string): void {
+/**
+ * Installs a global fetch interceptor that rewrites the Bearer auth header to Basic
+ * for requests carrying the PAT.
+ *
+ * @param basicValue The base64 PAT credential.
+ * @param configuredHost Hostname of the Azure DevOps connection the user explicitly configured
+ * (e.g. via the CLI `organization` argument). Trusted in addition to the built-in cloud allow-list,
+ * and — unlike the cloud hosts — allowed over plain `http:` too, since on-premises Azure DevOps
+ * Server / TFS collections are frequently reached over an internal network without TLS.
+ */
+function installPatFetchInterceptor(basicValue: string, configuredHost?: string): void {
   const originalFetch = globalThis.fetch;
   const patBearerValue = `Bearer ${basicValue}`;
+  const normalizedConfiguredHost = configuredHost?.toLowerCase();
 
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined));
@@ -27,7 +38,9 @@ function installPatFetchInterceptor(basicValue: string): void {
     }
 
     const requestUrl = new URL(input instanceof Request ? input.url : input.toString());
-    if (requestUrl.protocol !== "https:" || !isPatAllowedHost(requestUrl.hostname)) {
+    const isConfiguredHost = normalizedConfiguredHost !== undefined && requestUrl.hostname.toLowerCase() === normalizedConfiguredHost;
+    const schemeAllowed = requestUrl.protocol === "https:" || (requestUrl.protocol === "http:" && isConfiguredHost);
+    if (!schemeAllowed || !(isPatAllowedHost(requestUrl.hostname) || isConfiguredHost)) {
       throw new Error(`Refusing to send a Personal Access Token to untrusted destination '${requestUrl.origin}'`);
     }
 

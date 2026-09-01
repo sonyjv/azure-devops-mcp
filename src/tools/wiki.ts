@@ -177,12 +177,16 @@ function configureWikiTools(server: McpServer, tokenProvider: () => Promise<stri
             // URL would be silently ignored and content fetched from the configured org instead.
             const configuredOrg = getOrgFromUrl(connection.serverUrl);
             const urlOrg = getOrgFromUrl(url);
-            if (configuredOrg && urlOrg !== configuredOrg) {
+            // On on-premises Azure DevOps Server, hosts aren't recognized by getOrgFromUrl (there's
+            // no dev.azure.com/*.visualstudio.com convention), so fall back to a full-origin
+            // comparison — otherwise the guard above would silently no-op for on-prem.
+            const mismatch = configuredOrg || urlOrg ? urlOrg !== configuredOrg : new URL(connection.serverUrl).origin !== new URL(url).origin;
+            if (mismatch) {
               return {
                 content: [
                   {
                     type: "text",
-                    text: `Error fetching wiki page content: The provided URL targets organization '${urlOrg ?? "unknown"}', which does not match the configured organization '${configuredOrg}'. Cross-organization requests are not allowed.`,
+                    text: `Error fetching wiki page content: The provided URL targets organization '${urlOrg ?? "unknown"}', which does not match the configured organization '${configuredOrg ?? "unknown"}'. Cross-organization requests are not allowed.`,
                   },
                 ],
                 isError: true,

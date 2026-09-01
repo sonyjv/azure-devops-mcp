@@ -16,8 +16,8 @@ Example
   "servers": {
     "ado": {
       "type": "stdio",
-      "command": "mcp-server-azuredevops",
-      "args": ["${input:ado_org}"],
+      "command": "node",
+      "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "${input:ado_org}"],
       "env": {
         "LOG_LEVEL": "debug"
       }
@@ -25,6 +25,8 @@ Example
   }
 }
 ```
+
+(This fork isn't published to npm — `/absolute/path/to/azure-devops-mcp` is the folder where you [built the server from source](./GETTINGSTARTED.md#build-the-server).)
 
 ## Common MCP Issues
 
@@ -87,7 +89,7 @@ For automated scenarios or when you want to use a token stored in an environment
 2. **Use the envvar authentication type:**
 
    ```bash
-   npx @azure-devops/mcp myorg --authentication envvar
+   node /absolute/path/to/azure-devops-mcp/dist/index.js myorg --authentication envvar
    ```
 
 3. **For MCP configuration files, update your `.vscode/mcp.json`:**
@@ -103,8 +105,8 @@ For automated scenarios or when you want to use a token stored in an environment
      "servers": {
        "ado": {
          "type": "stdio",
-         "command": "npx",
-         "args": ["-y", "@azure-devops/mcp", "${input:ado_org}", "--authentication", "envvar"]
+         "command": "node",
+         "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "${input:ado_org}", "--authentication", "envvar"]
        }
      }
    }
@@ -159,7 +161,7 @@ Use one of the non-interactive authentication methods:
 3. Start the server with `--authentication envvar`:
 
    ```bash
-   npx -y @azure-devops/mcp myorg --authentication envvar
+   node /absolute/path/to/azure-devops-mcp/dist/index.js myorg --authentication envvar
    ```
 
    For Claude Code:
@@ -167,7 +169,7 @@ Use one of the non-interactive authentication methods:
    ```bash
    claude mcp add azure-devops -s user \
      -e ADO_MCP_AUTH_TOKEN="your-azure-devops-pat" \
-     -- npx -y @azure-devops/mcp myorg --authentication envvar
+     -- node /absolute/path/to/azure-devops-mcp/dist/index.js myorg --authentication envvar
    ```
 
 **Option 2: Azure CLI authentication**
@@ -181,7 +183,7 @@ Use one of the non-interactive authentication methods:
 2. Start the server with `--authentication azcli`:
 
    ```bash
-   npx -y @azure-devops/mcp myorg --authentication azcli
+   node /absolute/path/to/azure-devops-mcp/dist/index.js myorg --authentication azcli
    ```
 
    > **Note:** If your Azure DevOps organization is in a different tenant than your default `az` CLI tenant, you must also pass `--tenant <tenant-id>`. See the [Multi-Tenant Authentication Problems](#multi-tenant-authentication-problems-when-using-azcli) section below.
@@ -224,8 +226,8 @@ Try using Azure login context instead:
      "servers": {
        "ado": {
          "type": "stdio",
-         "command": "npx",
-         "args": ["-y", "@azure-devops/mcp", "${input:ado_org}", "--authentication", "azcli"]
+         "command": "node",
+         "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "${input:ado_org}", "--authentication", "azcli"]
        }
      }
    }
@@ -259,8 +261,6 @@ The MCP server may be authenticating with a different tenant than your Azure Dev
 
 2. **Configure the MCP server with the tenant ID** by updating your `.vscode/mcp.json`.
 
-   🧨 Installation from Public Feed Configuration:
-
    ```json
    {
      "inputs": [
@@ -278,34 +278,8 @@ The MCP server may be authenticating with a different tenant than your Azure Dev
      "servers": {
        "ado": {
          "type": "stdio",
-         "command": "npx",
-         "args": ["-y", "@azure-devops/mcp", "${input:ado_org}", "--authentication", "azcli", "--tenant", "${input:ado_tenant}"]
-       }
-     }
-   }
-   ```
-
-   🛠️ Installation from Source Configuration:
-
-   ```json
-   {
-     "inputs": [
-       {
-         "id": "ado_org",
-         "type": "promptString",
-         "description": "Azure DevOps organization name (e.g. 'contoso')"
-       },
-       {
-         "id": "ado_tenant",
-         "type": "promptString",
-         "description": "Azure tenant ID (required for multi-tenant scenarios)"
-       }
-     ],
-     "servers": {
-       "ado": {
-         "type": "stdio",
-         "command": "mcp-server-azuredevops",
-         "args": ["${input:ado_org}", "--tenant", "${input:ado_tenant}"]
+         "command": "node",
+         "args": ["/absolute/path/to/azure-devops-mcp/dist/index.js", "${input:ado_org}", "--authentication", "azcli", "--tenant", "${input:ado_tenant}"]
        }
      }
    }
@@ -330,4 +304,4 @@ The MCP server may be authenticating with a different tenant than your Azure Dev
    **Solution:** Verify that:
    - The organization name is spelled correctly (case-sensitive)
    - The organization exists and you have access to it
-   - You're using just the organization name, not the full URL (e.g., use `contoso` not `https://dev.azure.com/contoso`)
+   - For Azure DevOps Services (cloud), you're passing just the organization name, not the full URL (e.g., use `contoso` not `https://dev.azure.com/contoso`). A full `http(s)://` URL is only expected for an on-premises Azure DevOps Server / TFS collection — see [Azure DevOps Server (On-Premises)](./GETTINGSTARTED.md#azure-devops-server-on-premises).
