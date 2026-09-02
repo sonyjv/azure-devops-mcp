@@ -291,6 +291,52 @@ The MCP server may be authenticating with a different tenant than your Azure Dev
    - Your Azure DevOps organization name
    - The tenant ID from step 1
 
+## Windows: `'"node"' is not recognized as an internal or external command`
+
+#### Symptoms
+
+- The MCP client reports `Waiting for server to respond to 'initialize' request...` and then `Connection state: Error Process exited with code 1`.
+- The server's stderr log shows exactly:
+  ```
+  '"node"' is not recognized as an internal or external command,
+  operable program or batch file.
+  ```
+  (note the literal double quotes wrapped around `node` — this is the tell)
+
+#### Root Cause
+
+This is a known npm-on-Windows bug in how the `.cmd` shim for a package's `bin` entry gets generated when invoked through `npx`. It can produce a malformed, double-quoted invocation of `node` that Windows' `cmd.exe` can't resolve. It's most commonly triggered when Node.js is installed to a path containing spaces (the default `C:\Program Files\nodejs`), combined with certain npm/Node version combinations (observed with a very recently released Node version). It happens before this project's own code ever runs, so it isn't specific to this package — any `npx`-invoked package with a `bin` entry could hit it on an affected machine.
+
+#### Solution
+
+Two options, in order of how much you want to change:
+
+1. **Bypass the shim entirely — run from source with `node` invoked directly** (most reliable if you don't want to touch your Node install):
+
+   ```powershell
+   git clone https://github.com/sonyjv/azure-devops-mcp.git
+   cd azure-devops-mcp
+   npm install
+   npm run build
+   ```
+
+   ```json
+   {
+     "servers": {
+       "ado": {
+         "type": "stdio",
+         "command": "C:\\Program Files\\nodejs\\node.exe",
+         "args": ["C:\\path\\to\\azure-devops-mcp\\dist\\index.js", "<your-org-or-collection-url>", "--authentication", "pat"],
+         "env": { "PERSONAL_ACCESS_TOKEN": "<your-pat>" }
+       }
+     }
+   }
+   ```
+
+   Since `node.exe` is invoked directly (no `npx`, no generated `.cmd` shim), this sidesteps the bug entirely.
+
+2. **Reinstall Node.js to a path without spaces** (e.g. `C:\nodejs` instead of `C:\Program Files\nodejs`) — this is the commonly documented root-cause fix, and lets `npx -y @sonyjv/azure-devops-mcp` keep working as documented elsewhere in this guide.
+
 ## Common Errors
 
 1. **Incorrect Organization Name Error**
