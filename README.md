@@ -4,6 +4,8 @@
 > **This is a fork.** [sonyjv/azure-devops-mcp](https://github.com/sonyjv/azure-devops-mcp) is a personal fork of [microsoft/azure-devops-mcp](https://github.com/microsoft/azure-devops-mcp), the official Azure DevOps MCP Server. It adds support for connecting to an **on-premises Azure DevOps Server / TFS collection**, in addition to Azure DevOps Services (cloud) — see [Azure DevOps Server (On-Premises)](./docs/GETTINGSTARTED.md#azure-devops-server-on-premises).
 >
 > This fork is published to npm as [`@sonyjv/azure-devops-mcp`](https://www.npmjs.com/package/@sonyjv/azure-devops-mcp) (Microsoft's own `@azure-devops/mcp` name is upstream's) — run it with `npx -y @sonyjv/azure-devops-mcp`, no separate clone or build step needed. It is not intended to be merged upstream. See [Local MCP Server Installation](#local-mcp-server-installation-optional).
+>
+> New to this and not sure what it actually does? [How It Works](./docs/how-it-works.html) is a plain-language walkthrough — pulling a requirement out of Azure DevOps, drafting test cases with Copilot, and publishing them back — written for non-technical readers. Download it and open it in a browser to view it rendered (GitHub shows `.html` files as source code, not as a page).
 
 > [!WARNING]
 > We recently completed a full tool consolidation that includes renaming of existing tools. Please see the [Toolset documentation](docs/TOOLSET.md) for the complete list of new tool names.
@@ -16,16 +18,17 @@ This project gives AI agents access to Azure DevOps through the Model Context Pr
 > If you're on Azure DevOps Services (cloud) and don't need on-premises support, Microsoft's [Remote MCP Server](https://learn.microsoft.com/en-us/azure/devops/mcp-server/remote-mcp-server) requires no installation and gets new features first — see [Learn more](#remote-mcp-server-recommended). It does **not** support on-premises Azure DevOps Server, which is this fork's reason for existing — on-prem users need the local server below.
 
 1. [Overview](#overview)
-2. [Design](#design)
-3. [Remote MCP Server (Recommended)](#remote-mcp-server-recommended)
-4. [Supported Tools](#supported-tools)
-5. [Local MCP Server Installation (Optional)](#local-mcp-server-installation-optional)
-6. [Using Domains (Local Server)](#using-domains-local-server)
-7. [Project and Team Defaults (Local Server)](#project-and-team-defaults-local-server)
-8. [Troubleshooting](#troubleshooting)
-9. [Examples and Best Practices](#examples-and-best-practices)
-10. [Frequently Asked Questions](#frequently-asked-questions)
-11. [Contributing](#contributing)
+2. [How It Works (Plain-Language Walkthrough)](./docs/how-it-works.html)
+3. [Design](#design)
+4. [Remote MCP Server (Recommended)](#remote-mcp-server-recommended)
+5. [Supported Tools](#supported-tools)
+6. [Local MCP Server Installation (Optional)](#local-mcp-server-installation-optional)
+7. [Using Domains (Local Server)](#using-domains-local-server)
+8. [Project and Team Defaults (Local Server)](#project-and-team-defaults-local-server)
+9. [Troubleshooting](#troubleshooting)
+10. [Examples and Best Practices](#examples-and-best-practices)
+11. [Frequently Asked Questions](#frequently-asked-questions)
+12. [Contributing](#contributing)
 
 ## Overview
 

@@ -1,0 +1,873 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>The ADO Bridge</title>
+    <meta name="description" content="How VS Code, GitHub Copilot, and the Azure DevOps MCP Server turn a requirement into reviewed, published test cases." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%89%3C/text%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,500&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet" />
+
+    <style>
+      :root {
+        --bg: #eceee7;
+        --paper: #f6f5f0;
+        --ink: #1c2430;
+        --ink-soft: #4b5563;
+        --line: #cdc9ba;
+        --line-soft: #ddd9cb;
+
+        --copilot: #5750d6;
+        --copilot-soft: #eceafa;
+        --bridge: #1f7a72;
+        --bridge-soft: #e4f0ee;
+        --ado: #2c3a52;
+        --ado-soft: #e7e9ee;
+        --signal: #c97a1e;
+        --signal-soft: #f7ead4;
+
+        --shadow: 0 1px 2px rgba(28, 36, 48, 0.06), 0 8px 24px rgba(28, 36, 48, 0.06);
+        --radius: 3px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme="light"]) {
+          --bg: #171a1f;
+          --paper: #1e222a;
+          --ink: #e9e7de;
+          --ink-soft: #a7ada9;
+          --line: #3a3f47;
+          --line-soft: #2b2f37;
+
+          --copilot: #9b95f2;
+          --copilot-soft: #262640;
+          --bridge: #5fc9bd;
+          --bridge-soft: #182f2c;
+          --ado: #c2cadb;
+          --ado-soft: #262c38;
+          --signal: #e2a34f;
+          --signal-soft: #33291a;
+
+          --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+      }
+
+      :root[data-theme="dark"] {
+        --bg: #171a1f;
+        --paper: #1e222a;
+        --ink: #e9e7de;
+        --ink-soft: #a7ada9;
+        --line: #3a3f47;
+        --line-soft: #2b2f37;
+
+        --copilot: #9b95f2;
+        --copilot-soft: #262640;
+        --bridge: #5fc9bd;
+        --bridge-soft: #182f2c;
+        --ado: #c2cadb;
+        --ado-soft: #262c38;
+        --signal: #e2a34f;
+        --signal-soft: #33291a;
+
+        --shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.35);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          "Source Sans 3",
+          -apple-system,
+          "Segoe UI",
+          sans-serif;
+        font-size: 17px;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-family: "Newsreader", Georgia, serif;
+        font-weight: 500;
+        text-wrap: balance;
+        color: var(--ink);
+        margin: 0;
+      }
+
+      .page {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 64px 24px 96px;
+      }
+
+      a {
+        color: var(--bridge);
+      }
+
+      .eyebrow {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 12.5px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--bridge);
+        font-weight: 500;
+      }
+
+      header.hero {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        padding-bottom: 40px;
+        margin-bottom: 44px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      h1 {
+        font-size: clamp(34px, 5vw, 46px);
+        line-height: 1.12;
+        letter-spacing: -0.01em;
+      }
+
+      .lede {
+        font-size: 19px;
+        color: var(--ink-soft);
+        max-width: 62ch;
+      }
+
+      .lede strong {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      section {
+        margin-bottom: 56px;
+      }
+
+      h2 {
+        font-size: 26px;
+        margin-bottom: 6px;
+      }
+
+      .section-intro {
+        color: var(--ink-soft);
+        max-width: 64ch;
+        margin: 10px 0 28px;
+      }
+
+      /* ---------- three-player diagram ---------- */
+
+      .diagram {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr auto 1fr;
+        align-items: center;
+        gap: 0;
+        padding: 28px 20px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+      }
+
+      .node {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 18px 16px;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        text-align: center;
+      }
+
+      .node .role {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 10.5px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .node .name {
+        font-family: "Newsreader", Georgia, serif;
+        font-size: 19px;
+        font-weight: 500;
+      }
+
+      .node .desc {
+        font-size: 13.5px;
+        color: var(--ink-soft);
+        line-height: 1.45;
+      }
+
+      .node.copilot {
+        background: var(--copilot-soft);
+        border-color: color-mix(in srgb, var(--copilot) 35%, var(--line));
+      }
+      .node.copilot .role {
+        color: var(--copilot);
+      }
+      .node.bridge {
+        background: var(--bridge-soft);
+        border-color: color-mix(in srgb, var(--bridge) 35%, var(--line));
+      }
+      .node.bridge .role {
+        color: var(--bridge);
+      }
+      .node.ado {
+        background: var(--ado-soft);
+        border-color: color-mix(in srgb, var(--ado) 40%, var(--line));
+      }
+      .node.ado .role {
+        color: var(--ado);
+      }
+
+      .link {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        padding: 0 10px;
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+        font-size: 10.5px;
+        color: var(--ink-soft);
+      }
+
+      .link .arrow {
+        font-size: 15px;
+        line-height: 1;
+        color: var(--ink-soft);
+      }
+      .link .cap {
+        white-space: nowrap;
+      }
+
+      .diagram-vert {
+        display: none;
+      }
+
+      @media (max-width: 620px) {
+        .diagram-horiz {
+          display: none;
+        }
+        .diagram-vert {
+          display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 0;
+        }
+        .diagram-vert .node {
+          width: 100%;
+        }
+        .diagram-vert .link {
+          flex-direction: row;
+          justify-content: center;
+          gap: 14px;
+          padding: 10px 0;
+        }
+        .diagram-vert .link .arrow {
+          transform: rotate(90deg);
+        }
+      }
+
+      .bridge-note {
+        margin-top: 18px;
+        font-size: 14.5px;
+        color: var(--ink-soft);
+        background: var(--paper);
+        border-left: 2px solid var(--bridge);
+        padding: 12px 16px;
+        border-radius: 0 var(--radius) var(--radius) 0;
+      }
+
+      /* ---------- setup list ---------- */
+
+      .setup {
+        counter-reset: setup;
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+      }
+
+      .setup li {
+        counter-increment: setup;
+        display: grid;
+        grid-template-columns: 30px 1fr;
+        gap: 14px;
+        align-items: start;
+      }
+
+      .setup li::before {
+        content: counter(setup);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 13px;
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--ink-soft);
+        margin-top: 1px;
+      }
+
+      .setup .body b {
+        color: var(--ink);
+      }
+      .setup .body {
+        color: var(--ink-soft);
+        font-size: 15.5px;
+      }
+
+      .once-note {
+        margin-top: 18px;
+        font-size: 13.5px;
+        font-family: "IBM Plex Mono", monospace;
+        color: var(--signal);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      /* ---------- workflow steps ---------- */
+
+      .step {
+        display: grid;
+        grid-template-columns: 46px 1fr;
+        gap: 20px;
+        padding: 28px 0;
+        border-top: 1px solid var(--line-soft);
+      }
+
+      .step:first-of-type {
+        border-top: 1px solid var(--line);
+      }
+
+      .step-num {
+        font-family: "Newsreader", serif;
+        font-size: 30px;
+        color: var(--line);
+        font-variant-numeric: tabular-nums;
+        line-height: 1;
+        padding-top: 4px;
+      }
+
+      .step-title {
+        font-family: "Newsreader", Georgia, serif;
+        font-size: 22px;
+        font-weight: 500;
+        margin-bottom: 8px;
+      }
+
+      .step-body {
+        color: var(--ink-soft);
+        max-width: 60ch;
+      }
+      .step-body p {
+        margin: 0 0 12px;
+      }
+
+      .prompt {
+        margin: 14px 0;
+        padding: 14px 16px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 13.5px;
+        color: var(--ink);
+        position: relative;
+      }
+
+      .prompt .who {
+        display: block;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        margin-bottom: 6px;
+      }
+
+      .draft-sample {
+        margin: 14px 0;
+        padding: 14px 16px;
+        background: var(--copilot-soft);
+        border-radius: var(--radius);
+        border: 1px solid color-mix(in srgb, var(--copilot) 30%, var(--line));
+      }
+
+      .draft-sample .who {
+        display: block;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--copilot);
+        margin-bottom: 8px;
+      }
+
+      .draft-sample ul {
+        margin: 0;
+        padding-left: 18px;
+        font-size: 14.5px;
+      }
+      .draft-sample li {
+        margin-bottom: 4px;
+      }
+
+      .checkpoint {
+        margin: 14px 0;
+        padding: 14px 16px;
+        background: var(--signal-soft);
+        border-radius: var(--radius);
+        border: 1px solid color-mix(in srgb, var(--signal) 40%, var(--line));
+        font-size: 14.5px;
+        color: var(--ink);
+      }
+
+      .checkpoint b {
+        color: var(--signal);
+      }
+
+      details.hood {
+        margin-top: 14px;
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background: transparent;
+      }
+
+      details.hood summary {
+        cursor: pointer;
+        padding: 10px 14px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11.5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-soft);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        list-style: none;
+      }
+
+      details.hood summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.hood summary::before {
+        content: "+";
+        font-family: "IBM Plex Mono", monospace;
+        color: var(--bridge);
+        font-size: 13px;
+      }
+
+      details.hood[open] summary::before {
+        content: "\2212";
+      }
+
+      details.hood .hood-body {
+        padding: 0 16px 16px;
+        font-size: 14px;
+        color: var(--ink-soft);
+      }
+
+      details.hood code {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12.5px;
+        background: var(--paper);
+        border: 1px solid var(--line-soft);
+        padding: 1px 6px;
+        border-radius: 3px;
+        color: var(--bridge);
+      }
+
+      .result-note {
+        margin-top: 14px;
+        font-size: 14px;
+        color: var(--ink-soft);
+        display: flex;
+        gap: 8px;
+        align-items: flex-start;
+      }
+
+      .result-note .tag {
+        flex-shrink: 0;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ado);
+        background: var(--ado-soft);
+        padding: 3px 7px;
+        border-radius: 3px;
+        margin-top: 1px;
+      }
+
+      /* ---------- trust grid ---------- */
+
+      .trust {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1px;
+        background: var(--line);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .trust .card {
+        background: var(--paper);
+        padding: 22px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .trust .q {
+        font-family: "Newsreader", Georgia, serif;
+        font-style: italic;
+        font-size: 16.5px;
+        color: var(--ink);
+      }
+
+      .trust .a {
+        font-size: 14px;
+        color: var(--ink-soft);
+      }
+
+      @media (max-width: 620px) {
+        .trust {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* ---------- recap ---------- */
+
+      .recap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 6px;
+        padding: 26px 18px;
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        flex-wrap: wrap;
+      }
+
+      .recap .stage {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        text-align: center;
+        min-width: 90px;
+      }
+
+      .recap .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: var(--bridge);
+      }
+
+      .recap .stage.check .dot {
+        background: var(--signal);
+      }
+
+      .recap .stage .label {
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 11px;
+        letter-spacing: 0.05em;
+        color: var(--ink-soft);
+      }
+
+      .recap .sep {
+        color: var(--line);
+        font-size: 14px;
+      }
+
+      .note-card {
+        background: var(--paper);
+        border: 1px solid var(--line);
+        border-left: 2px solid var(--signal);
+        border-radius: 0 var(--radius) var(--radius) 0;
+        padding: 20px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .note-card p {
+        margin: 0;
+        color: var(--ink-soft);
+        font-size: 14.5px;
+        max-width: 64ch;
+      }
+
+      .note-card p b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+
+      footer {
+        margin-top: 64px;
+        padding-top: 24px;
+        border-top: 1px solid var(--line);
+        font-size: 13.5px;
+        color: var(--ink-soft);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="hero">
+        <span class="eyebrow">How it works</span>
+        <h1>From requirement to test case, without leaving chat.</h1>
+        <p class="lede">
+          This page explains how <strong>VS Code</strong>, <strong>GitHub Copilot</strong>, and the <strong>Azure DevOps MCP Server</strong> work together to turn a requirement already sitting in
+          Azure DevOps into reviewed, published test cases — with a real person approving the work before anything is saved. No coding involved.
+        </p>
+      </header>
+
+      <section id="players">
+        <h2>The three players</h2>
+        <p class="section-intro">Everything below is really just three things talking to each other. Once this shape is clear, the rest of the page is just detail.</p>
+
+        <div class="diagram diagram-horiz">
+          <div class="node copilot">
+            <span class="role">You + the assistant</span>
+            <span class="name">VS Code &amp; Copilot</span>
+            <span class="desc">Where you type plain-English requests and read what comes back.</span>
+          </div>
+          <div class="link">
+            <span class="cap">asks, in English</span>
+            <span class="arrow">&#8594;</span>
+            <span class="cap">answers back</span>
+            <span class="arrow" style="transform: scaleX(-1)">&#8594;</span>
+          </div>
+          <div class="node bridge">
+            <span class="role">The translator</span>
+            <span class="name">MCP Server</span>
+            <span class="desc">Turns each request into an official Azure DevOps action — nothing more, nothing less.</span>
+          </div>
+          <div class="link">
+            <span class="cap">your request</span>
+            <span class="arrow">&#8594;</span>
+            <span class="cap">the data</span>
+            <span class="arrow" style="transform: scaleX(-1)">&#8594;</span>
+          </div>
+          <div class="node ado">
+            <span class="role">The record</span>
+            <span class="name">Azure DevOps</span>
+            <span class="desc">Where your requirements and test cases actually live, before and after.</span>
+          </div>
+        </div>
+
+        <div class="diagram diagram-vert">
+          <div class="node copilot">
+            <span class="role">You + the assistant</span>
+            <span class="name">VS Code &amp; Copilot</span>
+            <span class="desc">Where you type plain-English requests and read what comes back.</span>
+          </div>
+          <div class="link"><span class="arrow">&#8594;</span><span class="cap">asks / answers</span></div>
+          <div class="node bridge">
+            <span class="role">The translator</span>
+            <span class="name">MCP Server</span>
+            <span class="desc">Turns each request into an official Azure DevOps action.</span>
+          </div>
+          <div class="link"><span class="arrow">&#8594;</span><span class="cap">request / data</span></div>
+          <div class="node ado">
+            <span class="role">The record</span>
+            <span class="name">Azure DevOps</span>
+            <span class="desc">Where requirements and test cases actually live.</span>
+          </div>
+        </div>
+
+        <p class="bridge-note">
+          The middle piece — the MCP Server — doesn't store anything of its own and has no login of its own. It simply passes your request along and hands back the result, signed in as <em>you</em>.
+          It can only do what you're already allowed to do in Azure DevOps by hand.
+        </p>
+      </section>
+
+      <section id="setup">
+        <h2>Before you start</h2>
+        <p class="section-intro">A short, one-time setup — someone technical usually does this once per project.</p>
+
+        <ol class="setup">
+          <li>
+            <span class="body"><b>Install VS Code and Node.js</b> — the two free programs everything else runs on top of.</span>
+          </li>
+          <li>
+            <span class="body"><b>Add a small connection file</b> to the project, pointing at your Azure DevOps organization (or, for an in-house server, its address).</span>
+          </li>
+          <li>
+            <span class="body"><b>Switch on the bridge</b> from VS Code's tool panel, then open Copilot Chat and switch it to <b>Agent mode</b>.</span>
+          </li>
+          <li>
+            <span class="body"><b>Sign in</b> with the same account you already use for Azure DevOps. From this point on, Copilot can only see and touch what that account can.</span>
+          </li>
+        </ol>
+
+        <p class="once-note">You only do this once per project — everything from here on is just typing in chat.</p>
+      </section>
+
+      <section id="workflow">
+        <h2>The workflow</h2>
+        <p class="section-intro">Four steps, the same way a QA engineer would do this by hand — except Copilot does the typing, and you do the approving.</p>
+
+        <div class="step">
+          <span class="step-num">1</span>
+          <div>
+            <div class="step-title">Pick a requirement</div>
+            <div class="step-body">
+              <p>
+                Tell Copilot which requirement to look at, by name, ID, or a short description. It opens the same work item you'd otherwise open by hand in Azure DevOps — same title, same description,
+                same acceptance criteria.
+              </p>
+              <div class="prompt"><span class="who">You, in Copilot Chat</span>Show me requirement US-4213 in the Contoso project.</div>
+              <details class="hood">
+                <summary>Under the hood</summary>
+                <div class="hood-body">
+                  Copilot calls the server's <code>wit_work_item</code> (or <code>wit_query</code> to search first) tool, which reads the work item straight from Azure DevOps' own API — nothing
+                  cached, nothing guessed.
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-num">2</span>
+          <div>
+            <div class="step-title">Copilot drafts test cases</div>
+            <div class="step-body">
+              <p>
+                Copilot reads the requirement's description and acceptance criteria, then writes a first draft of test cases covering it. This part is Copilot's own writing — a proposal, not something
+                pulled from Azure DevOps.
+              </p>
+              <div class="prompt"><span class="who">You, in Copilot Chat</span>Draft test cases for this, covering the happy path and the edge cases.</div>
+              <div class="draft-sample">
+                <span class="who">Copilot's draft (not saved anywhere yet)</span>
+                <ul>
+                  <li>Reset link is emailed within 60 seconds of a valid request</li>
+                  <li>Expired reset link shows a clear "link expired" message</li>
+                  <li>Reset request for an unregistered email shows no account-existence hint</li>
+                </ul>
+              </div>
+              <details class="hood">
+                <summary>Under the hood</summary>
+                <div class="hood-body">No Azure DevOps tool is called here at all — this step is Copilot reasoning over the text it already retrieved in step 1.</div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-num">3</span>
+          <div>
+            <div class="step-title">You review</div>
+            <div class="step-body">
+              <p>
+                Read the draft the way you'd review a colleague's work. Nothing has touched Azure DevOps yet — this is still just a conversation. Ask for changes, add a missing case, or drop one you
+                don't need.
+              </p>
+              <div class="checkpoint"><b>Nothing is saved</b> until you explicitly ask for it in the next step. This is the checkpoint.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step">
+          <span class="step-num">4</span>
+          <div>
+            <div class="step-title">Publish to Azure DevOps</div>
+            <div class="step-body">
+              <p>
+                Once you're happy with the draft, ask Copilot to save it. It creates real Test Case work items in Azure DevOps and links each one back to the requirement it was written for — the same
+                link a person would draw by hand.
+              </p>
+              <div class="prompt"><span class="who">You, in Copilot Chat</span>Create these as test cases under test plan "Sprint 12 Regression" and link them to US-4213.</div>
+              <div class="result-note">
+                <span class="tag">In Azure DevOps</span> Three new Test Case work items appear under Sprint 12 Regression, each showing a "Tested By" link back to US-4213 — visible to your whole team,
+                not just you.
+              </div>
+              <details class="hood">
+                <summary>Under the hood</summary>
+                <div class="hood-body">
+                  Copilot calls <code>testplan_test_case_write</code> (action: create) to write each test case, then <code>wit_work_item_link_write</code> to add the "Tested By" relationship back to
+                  the requirement, and <code>testplan_test_suite_write</code> if it needs to place them in a specific suite.
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="trust">
+        <h2>Trust &amp; safety</h2>
+        <p class="section-intro">The three questions people usually ask first.</p>
+
+        <div class="trust">
+          <div class="card">
+            <div class="q">Can it change things without asking me?</div>
+            <div class="a">No. Nothing is written to Azure DevOps until you explicitly ask for it — that's step 4, never earlier.</div>
+          </div>
+          <div class="card">
+            <div class="q">Can it see things I'm not allowed to see?</div>
+            <div class="a">No. It signs in as you, so it only sees and touches what your own Azure DevOps account already can.</div>
+          </div>
+          <div class="card">
+            <div class="q">Do I need to know how to code?</div>
+            <div class="a">No. Every step is a plain-English sentence typed into a chat window — nothing else.</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="recap">
+        <h2>The loop, end to end</h2>
+        <div class="recap">
+          <div class="stage"><span class="dot"></span><span class="label">REQUIREMENT</span></div>
+          <span class="sep">&#8594;</span>
+          <div class="stage"><span class="dot"></span><span class="label">DRAFT</span></div>
+          <span class="sep">&#8594;</span>
+          <div class="stage check"><span class="dot"></span><span class="label">YOUR REVIEW</span></div>
+          <span class="sep">&#8594;</span>
+          <div class="stage"><span class="dot"></span><span class="label">PUBLISHED &amp; LINKED</span></div>
+        </div>
+      </section>
+
+      <section id="fork-note">
+        <div class="note-card">
+          <span class="eyebrow">A quick note</span>
+          <p>
+            <b>This isn't Microsoft's official Azure DevOps MCP Server</b> — it's a fork of it. Microsoft's version, and its newer hosted option, only connect to Azure DevOps Services in the cloud.
+            This fork adds the ability to connect to an Azure DevOps Server running on your own company's network — sometimes called TFS — which plenty of organizations still run instead of, or
+            alongside, the cloud version. Everything else on this page behaves identically either way: what Copilot can see, how review works, what gets published.
+          </p>
+          <details class="hood">
+            <summary>Under the hood</summary>
+            <div class="hood-body">
+              Published separately as <code>@sonyjv/azure-devops-mcp</code> so it doesn't collide with Microsoft's own <code>@azure-devops/mcp</code> package — the on-premises support isn't merged
+              into Microsoft's project, and isn't intended to be.
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <footer>
+        Same tools you already use — Azure DevOps, VS Code, GitHub Copilot — connected so requirements and their test coverage stay a five-minute conversation instead of an afternoon of copy-pasting.
+      </footer>
+    </div>
+  </body>
+</html>
