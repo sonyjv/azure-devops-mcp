@@ -699,6 +699,22 @@
           The middle piece — the MCP Server — doesn't store anything of its own and has no login of its own. It simply passes your request along and hands back the result, signed in as <em>you</em>.
           It can only do what you're already allowed to do in Azure DevOps by hand.
         </p>
+
+        <p class="bridge-note">
+          It's not a website, and nobody is hosting it for you. The moment you switch the bridge on, VS Code starts this program itself, directly on your own computer, and talks to it the way two
+          programs on the same machine talk to each other — not over the internet. Close VS Code and it's gone; nothing keeps running in the background. The only place it ever sends anything is your
+          own Azure DevOps organization.
+        </p>
+        <details class="hood">
+          <summary>Under the hood</summary>
+          <div class="hood-body">
+            VS Code's connection file names one command: <code>npx -y @sonyjv/azure-devops-mcp your-org</code>. When you switch the bridge on, VS Code runs that command as a direct child process on
+            your machine — <code>npx</code> fetches the published program from the public npm registry the first time (cached after that), then runs it locally; nothing is installed as a background
+            service. VS Code and the server talk over <em>stdio</em> — their own standard input/output streams — not a network connection, so that leg never leaves the machine at all. The only network
+            calls the server itself makes are to the Azure DevOps address you configured (cloud <code>dev.azure.com</code>, or your own on-premises server) and, for sign-in, Microsoft's identity
+            service. It has no analytics, no telemetry, and no server of its own.
+          </div>
+        </details>
       </section>
 
       <section id="setup">
