@@ -4,7 +4,7 @@ Before you get started, ensure you follow the steps in the `README.md` file. Thi
 
 ## Does the MCP Server support both Azure DevOps Services and on-premises deployments?
 
-This MCP Server supports only Azure DevOps Services. Several required API endpoints are not yet available for on-premises deployments. We currently do not have plans to support Azure DevOps on-prem.
+Yes, in this fork. In addition to Azure DevOps Services (cloud), this fork adds support for connecting to an on-premises Azure DevOps Server / TFS collection. See [Azure DevOps Server (On-Premises)](./GETTINGSTARTED.md#azure-devops-server-on-premises) for setup instructions. (Microsoft's upstream project and its hosted Remote MCP Server only support the cloud service — on-premises support is specific to this fork.)
 
 ## Can I connect to more than one organization at a time?
 
@@ -31,3 +31,15 @@ Unfortunately, personal accounts are not supported. To maintain a higher level o
 ## When will a remote Azure DevOps MCP Server be available?
 
 We receive this question frequently. The good news is that work is currently underway. Development began in early January 2026. Once we can provide a reliable timeline, we will publish it on the public [Azure DevOps roadmap](https://learn.microsoft.com/en-us/azure/devops/release-notes/features-timeline).
+
+## How does the server protect me from malicious content stored in Azure DevOps?
+
+As of v2.10.0, every tool response is automatically wrapped in "Spotlighting" — content pulled from Azure DevOps (wiki pages, work item descriptions, PR text, comments, and so on) is delimited before it's handed back to the model, so text an attacker planted in, say, a wiki page can't be mistaken for an instruction from you. This applies automatically across every tool domain; you don't need to configure anything.
+
+## Why does the pull request autocomplete tool now require `bypassPolicy`?
+
+As of v2.10.0, setting autocomplete on a pull request (`repo_pull_request_write`, `update` action) requires explicitly passing `bypassPolicy: true` before a `bypassReason` takes effect. Previously, supplying a reason alone was enough to silently bypass branch policies — this closes that accidental-bypass gap. If you want autocomplete to bypass policy, pass both `bypassPolicy: true` and a `bypassReason`; otherwise autocomplete waits for policies to pass normally.
+
+## Can I retrieve a work item without knowing its project?
+
+Yes, for the `get` action of `wit_work_item`: as of v2.10.0, you can fetch a single work item by ID at organization scope without specifying a project — the project-selection prompt is skipped for `get` specifically. Other actions (`my`, `list_for_iteration`, and so on) still need a project, same as before.
